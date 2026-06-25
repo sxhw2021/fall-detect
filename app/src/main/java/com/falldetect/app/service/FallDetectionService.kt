@@ -16,6 +16,7 @@ import com.falldetect.app.MainActivity
 import com.falldetect.app.R
 import com.falldetect.app.data.AppDatabase
 import com.falldetect.app.data.DetectionEvent
+import com.falldetect.app.ui.AlarmActivity
 import kotlinx.coroutines.*
 
 class FallDetectionService : Service() {

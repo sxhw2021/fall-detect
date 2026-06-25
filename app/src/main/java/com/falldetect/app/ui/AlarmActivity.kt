@@ -52,17 +52,6 @@ class AlarmActivity : ComponentActivity() {
 
     private fun startAlarm() {
         reminderManager?.playAlarm()
-        
-        kotlinx.coroutines.MainScope().launch {
-            val db = AppDatabase.getDatabase(applicationContext)
-            val settings = db.settingsDao().getSettings().first()
-            
-            settings?.let {
-                if (it.voiceEnabled) {
-                    voiceManager?.speak(it.customVoiceText)
-                }
-            }
-        }
     }
 
     private fun dismissAlarm() {
