@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.falldetect.app.service.ReminderManager
 import com.falldetect.app.service.VoiceManager
+import com.falldetect.app.service.FallDetectionService
 import com.falldetect.app.data.AppDatabase
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -57,6 +58,7 @@ class AlarmActivity : ComponentActivity() {
     private fun dismissAlarm() {
         reminderManager?.stopAlarm()
         voiceManager?.stop()
+        FallDetectionService.resetAlarmState()
         finish()
     }
 

@@ -20,12 +20,23 @@ import com.falldetect.app.ui.AlarmActivity
 import kotlinx.coroutines.*
 
 class FallDetectionService : Service() {
+    companion object {
+        var isAlarmActive = false
+            private set
+        
+        fun resetAlarmState() {
+            isAlarmActive = false
+        }
+    }
+    
     private lateinit var sensorManager: SensorManager
     private lateinit var sensorDataProcessor: SensorDataProcessor
     private lateinit var fallDetector: FallDetector
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var monitoringJob: Job? = null
+    private var lastAlarmTime = 0L
+    private val alarmCooldown = 10000L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -87,11 +98,18 @@ class FallDetectionService : Service() {
     }
 
     private suspend fun onFallDetected() {
+        val currentTime = System.currentTimeMillis()
+        if (isAlarmActive || currentTime - lastAlarmTime < alarmCooldown) {
+            return
+        }
+        
         val db = AppDatabase.getDatabase(applicationContext)
         val confidence = fallDetector.calculateConfidence()
         val event = DetectionEvent(confidence = confidence)
         db.detectionEventDao().insertEvent(event)
 
+        isAlarmActive = true
+        lastAlarmTime = currentTime
         triggerAlarm()
         triggerVibration()
     }

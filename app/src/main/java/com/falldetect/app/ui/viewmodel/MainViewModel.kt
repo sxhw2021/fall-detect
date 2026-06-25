@@ -25,9 +25,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleMonitoring(enable: Boolean) {
         viewModelScope.launch {
-            settings.value?.let {
-                settingsDao.insertOrUpdate(it.copy(isMonitoringEnabled = enable))
-            }
+            settingsDao.updateMonitoring(enable)
         }
     }
 
@@ -45,17 +43,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleAlarm() {
         viewModelScope.launch {
-            settings.value?.let {
-                settingsDao.insertOrUpdate(it.copy(alarmEnabled = !it.alarmEnabled))
-            }
+            val current = settings.value?.alarmEnabled ?: true
+            settingsDao.updateAlarm(!current)
         }
     }
 
     fun toggleVoice() {
         viewModelScope.launch {
-            settings.value?.let {
-                settingsDao.insertOrUpdate(it.copy(voiceEnabled = !it.voiceEnabled))
-            }
+            val current = settings.value?.voiceEnabled ?: true
+            settingsDao.updateVoice(!current)
         }
     }
 
