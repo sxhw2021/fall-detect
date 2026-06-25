@@ -1,0 +1,144 @@
+package com.falldetect.app.service
+
+import android.app.Notification
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorManager
+import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.core.app.NotificationCompat
+import com.falldetect.app.FallDetectApp
+import com.falldetect.app.MainActivity
+import com.falldetect.app.R
+import com.falldetect.app.data.AppDatabase
+import com.falldetect.app.data.DetectionEvent
+import kotlinx.coroutines.*
+
+class FallDetectionService : Service() {
+    private lateinit var sensorManager: SensorManager
+    private lateinit var sensorDataProcessor: SensorDataProcessor
+    private lateinit var fallDetector: FallDetector
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private var monitoringJob: Job? = null
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        sensorDataProcessor = SensorDataProcessor()
+        fallDetector = FallDetector()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            "ACTION_START_MONITORING" -> startMonitoring()
+            "ACTION_STOP_MONITORING" -> stopMonitoring()
+        }
+        return START_STICKY
+    }
+
+    private fun startMonitoring() {
+        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+
+        accelerometer?.let {
+            sensorManager.registerListener(
+                sensorDataProcessor,
+                it,
+                SensorManager.SENSOR_DELAY_UI
+            )
+        }
+
+        gyroscope?.let {
+            sensorManager.registerListener(
+                sensorDataProcessor,
+                it,
+                SensorManager.SENSOR_DELAY_UI
+            )
+        }
+
+        startForeground(FallDetectApp.NOTIFICATION_ID, createNotification())
+        startFallDetection()
+    }
+
+    private fun startFallDetection() {
+        monitoringJob = serviceScope.launch {
+            while (isActive) {
+                val acceleration = sensorDataProcessor.acceleration.value
+                val isFreeFall = sensorDataProcessor.isFreeFall.value
+                val gyroscope = sensorDataProcessor.gyroscope.value
+
+                fallDetector.processData(acceleration, isFreeFall, gyroscope)
+
+                if (fallDetector.fallDetected.value) {
+                    onFallDetected()
+                }
+
+                delay(100)
+            }
+        }
+    }
+
+    private suspend fun onFallDetected() {
+        val db = AppDatabase.getDatabase(applicationContext)
+        val event = DetectionEvent(confidence = 0.9f)
+        db.detectionEventDao().insertEvent(event)
+
+        triggerAlarm()
+        triggerVibration()
+    }
+
+    private fun triggerAlarm() {
+        val intent = Intent(this, AlarmActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        startActivity(intent)
+    }
+
+    private fun triggerVibration() {
+        val vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(VibratorManager::class.java)
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun createNotification(): Notification {
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, FallDetectApp.NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("掉落检测已启动")
+            .setContentText("正在监测手机状态...")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun stopMonitoring() {
+        monitoringJob?.cancel()
+        sensorManager.unregisterListener(sensorDataProcessor)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+}
