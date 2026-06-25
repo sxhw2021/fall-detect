@@ -68,7 +68,7 @@ class FallDetector {
 
     private fun calculateThreshold(): Float {
         val baseThreshold = 25.0f
-        val sensitivityFactor = 1.0f + (sensitivityLevel - 5) * 0.1f
+        val sensitivityFactor = 1.0f + (5 - sensitivityLevel) * 0.1f
         return baseThreshold / sensitivityFactor
     }
 

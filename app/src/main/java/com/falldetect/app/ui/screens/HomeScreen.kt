@@ -211,7 +211,7 @@ fun SensitivityCard(sensitivity: Int) {
             }
             
             LinearProgressIndicator(
-                progress = { sensitivity / 10f },
+                progress = sensitivity / 10f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
