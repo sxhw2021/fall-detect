@@ -25,7 +25,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleMonitoring(enable: Boolean) {
         viewModelScope.launch {
-            settingsDao.updateMonitoring(enable)
+            val currentSettings = settings.value
+            if (currentSettings != null) {
+                settingsDao.updateMonitoring(enable)
+            } else {
+                val defaultSettings = Settings(
+                    id = 1,
+                    isMonitoringEnabled = enable,
+                    sensitivityLevel = 5,
+                    customVoiceText = "手机掉落，请注意！",
+                    alarmEnabled = true,
+                    voiceEnabled = true,
+                    alarmVolume = 100
+                )
+                settingsDao.insertOrUpdate(defaultSettings)
+            }
         }
     }
 
