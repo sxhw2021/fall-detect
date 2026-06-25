@@ -16,6 +16,10 @@ class FallDetector {
     private var accelerationHistory = mutableListOf<FloatArray>()
     private val historySize = 50
 
+    private var lastMagnitude = 0f
+    private var lastRotation = 0f
+    private var lastFreeFallCount = 0
+
     fun updateSensitivity(level: Int) {
         sensitivityLevel = level.coerceIn(1, 10)
     }
@@ -40,6 +44,10 @@ class FallDetector {
 
         val threshold = calculateThreshold()
 
+        lastMagnitude = magnitude
+        lastRotation = checkRotation(gyroscope).let { if (it) 1f else 0f }
+        lastFreeFallCount = countFreeFallInHistory()
+
         if (magnitude > threshold && 
             currentTime - lastImpactTime > impactCooldown) {
             
@@ -54,6 +62,7 @@ class FallDetector {
 
         if (_fallDetected.value && currentTime - lastImpactTime > impactCooldown) {
             _fallDetected.value = false
+            lastImpactTime = 0L
         }
     }
 
@@ -73,10 +82,14 @@ class FallDetector {
     }
 
     private fun checkFreeFallPattern(): Boolean {
-        if (accelerationHistory.size < 10) return false
+        return countFreeFallInHistory() >= 5
+    }
+
+    private fun countFreeFallInHistory(): Int {
+        if (accelerationHistory.size < 10) return 0
         
         val recentAccelerations = accelerationHistory.takeLast(10)
-        val lowAccelCount = recentAccelerations.count { accel ->
+        return recentAccelerations.count { accel ->
             val mag = sqrt(
                 (accel[0] * accel[0] +
                 accel[1] * accel[1] +
@@ -84,6 +97,22 @@ class FallDetector {
             ).toFloat()
             mag < 3.0f
         }
-        return lowAccelCount >= 5
+    }
+
+    fun calculateConfidence(): Float {
+        val threshold = calculateThreshold()
+        
+        val magnitudeScore = if (lastMagnitude > threshold) {
+            (lastMagnitude / (threshold * 2)).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+
+        val rotationScore = lastRotation
+
+        val freeFallScore = (lastFreeFallCount / 5f).coerceIn(0f, 1f)
+
+        return (magnitudeScore * 0.5f + rotationScore * 0.3f + freeFallScore * 0.2f)
+            .coerceIn(0f, 1f)
     }
 }

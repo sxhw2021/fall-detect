@@ -87,7 +87,8 @@ class FallDetectionService : Service() {
 
     private suspend fun onFallDetected() {
         val db = AppDatabase.getDatabase(applicationContext)
-        val event = DetectionEvent(confidence = 0.9f)
+        val confidence = fallDetector.calculateConfidence()
+        val event = DetectionEvent(confidence = confidence)
         db.detectionEventDao().insertEvent(event)
 
         triggerAlarm()
