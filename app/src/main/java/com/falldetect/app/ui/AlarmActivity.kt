@@ -11,13 +11,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.falldetect.app.service.ReminderManager
 import com.falldetect.app.service.VoiceManager
+import com.falldetect.app.data.AppDatabase
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 class AlarmActivity : ComponentActivity() {
     private var reminderManager: ReminderManager? = null
@@ -49,6 +52,17 @@ class AlarmActivity : ComponentActivity() {
 
     private fun startAlarm() {
         reminderManager?.playAlarm()
+        
+        kotlinx.coroutines.MainScope().launch {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val settings = db.settingsDao().getSettings().first()
+            
+            settings?.let {
+                if (it.voiceEnabled) {
+                    voiceManager?.speak(it.customVoiceText)
+                }
+            }
+        }
     }
 
     private fun dismissAlarm() {
@@ -70,10 +84,18 @@ fun AlarmScreen(
     voiceManager: VoiceManager
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     LaunchedEffect(Unit) {
         scope.launch {
-            voiceManager.speak("手机掉落，请注意！")
+            val db = AppDatabase.getDatabase(context)
+            val settings = db.settingsDao().getSettings().first()
+            
+            settings?.let {
+                if (it.voiceEnabled) {
+                    voiceManager.speak(it.customVoiceText)
+                }
+            }
         }
     }
 
