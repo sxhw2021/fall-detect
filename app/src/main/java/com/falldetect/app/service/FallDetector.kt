@@ -11,10 +11,10 @@ class FallDetector {
 
     private var sensitivityLevel = 5
     private var lastImpactTime = 0L
-    private val impactCooldown = 3000L
+    private val impactCooldown = 2000L
 
     private var accelerationHistory = mutableListOf<FloatArray>()
-    private val historySize = 100
+    private val historySize = 50
 
     private var lastMagnitude = 0f
     private var lastRotation = 0f
@@ -22,7 +22,7 @@ class FallDetector {
 
     private var freeFallDetected = false
     private var freeFallStartTime = 0L
-    private val minFreeFallDuration = 200L
+    private val minFreeFallDuration = 100L
 
     fun updateSensitivity(level: Int) {
         sensitivityLevel = level.coerceIn(1, 10)
@@ -52,20 +52,20 @@ class FallDetector {
         lastRotation = checkRotation(gyroscope).let { if (it) 1f else 0f }
         lastFreeFallCount = countFreeFallInHistory()
 
-        if (isInMotion()) {
+        if (isStrongMotion()) {
             _fallDetected.value = false
             lastImpactTime = currentTime
             return
         }
 
-        if (magnitude < 3.0f && !freeFallDetected) {
+        if (magnitude < 5.0f && !freeFallDetected) {
             freeFallDetected = true
             freeFallStartTime = currentTime
         }
 
         if (freeFallDetected && magnitude > threshold) {
             val freeFallDuration = currentTime - freeFallStartTime
-            val hasStrongImpact = magnitude > threshold * 2.0f
+            val hasStrongImpact = magnitude > threshold * 1.5f
             val hasRotation = checkRotation(gyroscope)
             
             if (freeFallDuration >= minFreeFallDuration && 
@@ -77,6 +77,14 @@ class FallDetector {
             freeFallDetected = false
         }
 
+        if (!freeFallDetected && magnitude > threshold * 1.8f) {
+            val hasRotation = checkRotation(gyroscope)
+            if (hasRotation && currentTime - lastImpactTime > impactCooldown) {
+                _fallDetected.value = true
+                lastImpactTime = currentTime
+            }
+        }
+
         if (_fallDetected.value && currentTime - lastImpactTime > impactCooldown) {
             _fallDetected.value = false
             lastImpactTime = 0L
@@ -84,8 +92,8 @@ class FallDetector {
     }
 
     private fun calculateThreshold(): Float {
-        val baseThreshold = 20.0f
-        val sensitivityFactor = 1.0f + (5 - sensitivityLevel) * 0.15f
+        val baseThreshold = 15.0f
+        val sensitivityFactor = 1.0f + (5 - sensitivityLevel) * 0.1f
         return baseThreshold / sensitivityFactor
     }
 
@@ -95,7 +103,7 @@ class FallDetector {
             gyroscope[1] * gyroscope[1] +
             gyroscope[2] * gyroscope[2]).toDouble()
         ).toFloat()
-        return rotationMagnitude > 8.0f
+        return rotationMagnitude > 5.0f
     }
 
     private fun checkFreeFallPattern(): Boolean {
@@ -112,14 +120,14 @@ class FallDetector {
                 accel[1] * accel[1] +
                 accel[2] * accel[2]).toDouble()
             ).toFloat()
-            mag < 3.0f
+            mag < 5.0f
         }
     }
 
-    private fun isInMotion(): Boolean {
-        if (accelerationHistory.size < 20) return false
+    private fun isStrongMotion(): Boolean {
+        if (accelerationHistory.size < 15) return false
         
-        val recentAccelerations = accelerationHistory.takeLast(20)
+        val recentAccelerations = accelerationHistory.takeLast(15)
         
         val magnitudes = recentAccelerations.map { accel ->
             sqrt(
@@ -133,15 +141,14 @@ class FallDetector {
         val variance = magnitudes.map { (it - mean) * (it - mean) }.average().toFloat()
         val stdDev = sqrt(variance.toDouble()).toFloat()
         
-        val highAccelCount = magnitudes.count { it > 15.0f }
-        val lowAccelCount = magnitudes.count { it < 5.0f }
+        val highAccelCount = magnitudes.count { it > 20.0f }
+        val isContinuousHighAccel = highAccelCount > 10
         
-        val hasPeriodicMotion = stdDev in 3.0f..12.0f && 
-            highAccelCount > 3 && 
-            lowAccelCount > 3 &&
-            abs(highAccelCount - lowAccelCount) < 8
+        val isCyclicMotion = stdDev > 8.0f && 
+            highAccelCount > 5 &&
+            mean > 12.0f
         
-        return hasPeriodicMotion
+        return isContinuousHighAccel || isCyclicMotion
     }
 
     fun calculateConfidence(): Float {
