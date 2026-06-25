@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">掉落检测</string>
+    <string name="notification_channel_name">掉落检测服务</string>
+    <string name="notification_channel_description">持续检测手机是否掉落</string>
 </resources>
