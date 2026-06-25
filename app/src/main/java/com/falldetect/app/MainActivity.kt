@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.falldetect.app.service.FallDetectionService
+import com.falldetect.app.service.PermissionManager
 import com.falldetect.app.ui.screens.HomeScreen
 import com.falldetect.app.ui.screens.SettingsScreen
 import com.falldetect.app.ui.theme.FallDetectTheme
@@ -20,6 +21,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        val permissionManager = PermissionManager(this)
+        if (!permissionManager.hasAllPermissions()) {
+            permissionManager.requestPermissions(this)
+        }
         
         setContent {
             FallDetectTheme {
