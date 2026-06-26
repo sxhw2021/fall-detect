@@ -115,11 +115,34 @@ class FallDetectionService : Service() {
     }
 
     private fun triggerAlarm() {
-        val intent = Intent(this, AlarmActivity::class.java).apply {
+        val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
-        startActivity(intent)
+        
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            alarmIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, FallDetectApp.ALARM_CHANNEL_ID)
+            .setContentTitle("⚠️ 手机掉落！")
+            .setContentText("检测到手机掉落，请注意查看")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setAutoCancel(true)
+            .setContentIntent(fullScreenPendingIntent)
+            .build()
+
+        val notificationManager = getSystemService(android.app.NotificationManager::class.java)
+        notificationManager.notify(FallDetectApp.ALARM_NOTIFICATION_ID, notification)
+        
+        startActivity(alarmIntent)
     }
 
     private fun triggerVibration() {

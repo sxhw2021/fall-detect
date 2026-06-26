@@ -19,7 +19,15 @@ class PermissionManager(private val context: Context) {
                 Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE,
                 Manifest.permission.POST_NOTIFICATIONS,
                 Manifest.permission.VIBRATE,
-                Manifest.permission.WAKE_LOCK
+                Manifest.permission.WAKE_LOCK,
+                Manifest.permission.USE_FULL_SCREEN_INTENT
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                Manifest.permission.FOREGROUND_SERVICE,
+                Manifest.permission.VIBRATE,
+                Manifest.permission.WAKE_LOCK,
+                Manifest.permission.USE_FULL_SCREEN_INTENT
             )
         } else {
             arrayOf(
