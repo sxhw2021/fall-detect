@@ -1,6 +1,7 @@
 package com.falldetect.app
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -29,13 +30,16 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            requestIgnoreBatteryOptimizations()
-        }
+        requestOverlayPermission()
     }
     
     private val overlayPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        requestFullScreenIntentPermission()
+    }
+
+    private val fullScreenIntentLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         requestIgnoreBatteryOptimizations()
@@ -63,7 +67,15 @@ class MainActivity : ComponentActivity() {
         
         permissions.add(Manifest.permission.VIBRATE)
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (permissions.isNotEmpty()) {
+            permissionLauncher.launch(permissions.toTypedArray())
+        } else {
+            requestOverlayPermission()
+        }
+    }
+
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -73,12 +85,7 @@ class MainActivity : ComponentActivity() {
                 return
             }
         }
-        
-        if (permissions.isNotEmpty()) {
-            permissionLauncher.launch(permissions.toTypedArray())
-        } else {
-            requestIgnoreBatteryOptimizations()
-        }
+        requestFullScreenIntentPermission()
     }
     
     private fun requestIgnoreBatteryOptimizations() {
@@ -89,6 +96,20 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
         }
+    }
+
+    private fun requestFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            if (!notificationManager.canUseFullScreenIntent()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                fullScreenIntentLauncher.launch(intent)
+                return
+            }
+        }
+        requestIgnoreBatteryOptimizations()
     }
 
     private fun startMonitoringService() {
