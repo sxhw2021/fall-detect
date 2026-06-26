@@ -15,15 +15,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.falldetect.app.data.AppDatabase
 import com.falldetect.app.service.FallDetectionService
 import com.falldetect.app.ui.screens.HomeScreen
 import com.falldetect.app.ui.screens.SettingsScreen
 import com.falldetect.app.ui.theme.FallDetectTheme
 import com.falldetect.app.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     
@@ -50,6 +54,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         
         requestPermissions()
+        restoreMonitoringState()
         
         setContent {
             FallDetectTheme {
@@ -95,6 +100,16 @@ class MainActivity : ComponentActivity() {
                 data = Uri.parse("package:$packageName")
             }
             startActivity(intent)
+        }
+    }
+
+    private fun restoreMonitoringState() {
+        lifecycleScope.launch {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val settings = db.settingsDao().getSettings().first()
+            if (settings?.isMonitoringEnabled == true) {
+                startMonitoringService()
+            }
         }
     }
 

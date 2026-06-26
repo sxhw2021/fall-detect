@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.provider.Settings
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.media.AudioAttributes
@@ -136,15 +135,18 @@ class FallDetectionService : Service() {
             addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
         
+        try {
+            startActivity(alarmIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
             0,
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        val canUseFullScreen = notificationManager.canUseFullScreenIntent()
 
         val notification = NotificationCompat.Builder(this, FallDetectApp.ALARM_CHANNEL_ID)
             .setContentTitle("⚠️ 手机掉落！")
@@ -158,15 +160,8 @@ class FallDetectionService : Service() {
             .setOngoing(true)
             .build()
 
+        val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(FallDetectApp.ALARM_NOTIFICATION_ID, notification)
-
-        if (!canUseFullScreen) {
-            try {
-                startActivity(alarmIntent)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
     }
 
     private fun triggerVibration() {
