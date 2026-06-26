@@ -30,7 +30,16 @@ class FallDetectionService : Service() {
         var isAlarmActive = false
             private set
         
+        private var instance: FallDetectionService? = null
+
         fun resetAlarmState() {
+            isAlarmActive = false
+        }
+
+        fun stopAlarm() {
+            instance?.stopVibration()
+            instance?.stopSound()
+            instance?.cancelAlarmNotification()
             isAlarmActive = false
         }
     }
@@ -49,6 +58,7 @@ class FallDetectionService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         sensorDataProcessor = SensorDataProcessor()
         fallDetector = FallDetector()
@@ -215,6 +225,30 @@ class FallDetectionService : Service() {
         }
     }
 
+    private fun stopVibration() {
+        try {
+            val vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(VibratorManager::class.java)
+                vibratorManager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(VIBRATOR_SERVICE) as Vibrator
+            }
+            vibrator.cancel()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun cancelAlarmNotification() {
+        try {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.cancel(FallDetectApp.ALARM_NOTIFICATION_ID)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun createNotification(): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -243,6 +277,8 @@ class FallDetectionService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         stopSound()
+        stopVibration()
         serviceScope.cancel()
+        instance = null
     }
 }

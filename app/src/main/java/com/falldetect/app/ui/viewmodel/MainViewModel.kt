@@ -69,6 +69,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateAudioUri(uri: String?) {
+        viewModelScope.launch {
+            settingsDao.updateAudioUri(uri)
+        }
+    }
+
     private fun getStartOfDay(): Long {
         val calendar = java.util.Calendar.getInstance()
         calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)

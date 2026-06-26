@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
                     onBack = { navController.popBackStack() },
                     onUpdateSensitivity = viewModel::updateSensitivity,
                     onUpdateVoiceText = viewModel::updateVoiceText,
+                    onUpdateAudioUri = viewModel::updateAudioUri,
                     onToggleAlarm = viewModel::toggleAlarm,
                     onToggleVoice = viewModel::toggleVoice
                 )

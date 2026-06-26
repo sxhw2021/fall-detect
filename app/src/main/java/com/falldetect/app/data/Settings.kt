@@ -9,6 +9,7 @@ data class Settings(
     val isMonitoringEnabled: Boolean = false,
     val sensitivityLevel: Int = 5,
     val customVoiceText: String = "手机掉落，请注意！",
+    val customAudioUri: String? = null,
     val alarmEnabled: Boolean = true,
     val voiceEnabled: Boolean = true,
     val alarmVolume: Int = 100

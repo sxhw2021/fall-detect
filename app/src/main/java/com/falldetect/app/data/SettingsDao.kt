@@ -25,4 +25,7 @@ interface SettingsDao {
 
     @Query("UPDATE settings SET voiceEnabled = :enabled WHERE id = 1")
     suspend fun updateVoice(enabled: Boolean)
+
+    @Query("UPDATE settings SET customAudioUri = :uri WHERE id = 1")
+    suspend fun updateAudioUri(uri: String?)
 }

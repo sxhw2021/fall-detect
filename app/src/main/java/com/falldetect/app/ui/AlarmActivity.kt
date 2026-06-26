@@ -44,21 +44,20 @@ class AlarmActivity : ComponentActivity() {
         setContent {
             AlarmScreen(
                 onDismiss = { dismissAlarm() },
-                voiceManager = voiceManager!!
+                voiceManager = voiceManager!!,
+                onStartAlarm = { audioUri -> startAlarm(audioUri) }
             )
         }
-
-        startAlarm()
     }
 
-    private fun startAlarm() {
-        reminderManager?.playAlarm()
+    private fun startAlarm(audioUri: String?) {
+        reminderManager?.playAlarm(audioUri)
     }
 
     private fun dismissAlarm() {
         reminderManager?.stopAlarm()
         voiceManager?.stop()
-        FallDetectionService.resetAlarmState()
+        FallDetectionService.stopAlarm()
         finish()
     }
 
@@ -72,7 +71,8 @@ class AlarmActivity : ComponentActivity() {
 @Composable
 fun AlarmScreen(
     onDismiss: () -> Unit,
-    voiceManager: VoiceManager
+    voiceManager: VoiceManager,
+    onStartAlarm: (String?) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -83,7 +83,9 @@ fun AlarmScreen(
             val settings = db.settingsDao().getSettings().first()
             
             settings?.let {
-                if (it.voiceEnabled) {
+                onStartAlarm(it.customAudioUri)
+                
+                if (it.voiceEnabled && it.customAudioUri == null) {
                     voiceManager.speak(it.customVoiceText)
                 }
             }
@@ -102,14 +104,14 @@ fun AlarmScreen(
             modifier = Modifier.padding(32.dp)
         ) {
             Text(
-                text = "⚠️",
+                text = "\u26a0\ufe0f",
                 fontSize = 80.sp
             )
             
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "手机掉落！",
+                text = "\u624b\u673a\u6389\u843d\uff01",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -119,7 +121,7 @@ fun AlarmScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "检测到手机掉落，请注意查看",
+                text = "\u68c0\u6d4b\u5230\u624b\u673a\u6389\u843d\uff0c\u8bf7\u6ce8\u610f\u67e5\u770b",
                 fontSize = 24.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center
@@ -137,7 +139,7 @@ fun AlarmScreen(
                     .height(60.dp)
             ) {
                 Text(
-                    text = "关闭警报",
+                    text = "\u5173\u95ed\u8b66\u62a5",
                     fontSize = 20.sp,
                     color = Color.Red,
                     fontWeight = FontWeight.Bold

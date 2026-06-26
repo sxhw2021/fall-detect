@@ -1,14 +1,19 @@
 package com.falldetect.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,11 +26,23 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onUpdateSensitivity: (Int) -> Unit,
     onUpdateVoiceText: (String) -> Unit,
+    onUpdateAudioUri: (String?) -> Unit,
     onToggleAlarm: () -> Unit,
     onToggleVoice: () -> Unit
 ) {
-    var voiceText by remember(settings) { mutableStateOf(settings?.customVoiceText ?: "手机掉落，请注意！") }
     var sliderValue by remember(settings) { mutableStateOf((settings?.sensitivityLevel ?: 5).toFloat()) }
+    val context = LocalContext.current
+
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            onUpdateAudioUri(it.toString())
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -138,29 +155,81 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "自定义语音",
+                        text = "自定义报警音频",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    OutlinedTextField(
-                        value = voiceText,
-                        onValueChange = { voiceText = it },
-                        label = { Text("提醒语音内容") },
-                        placeholder = { Text("输入掉落时播报的文字") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 4
+                    Text(
+                        text = "选择手机上的音频文件作为报警声",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    Button(
-                        onClick = { onUpdateVoiceText(voiceText) },
+                    val audioFileName = settings?.customAudioUri?.let { uri ->
+                        try {
+                            val parsedUri = Uri.parse(uri)
+                            val cursor = context.contentResolver.query(parsedUri, null, null, null, null)
+                            cursor?.use {
+                                if (it.moveToFirst()) {
+                                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                    if (nameIndex >= 0) it.getString(nameIndex) else "已选择音频"
+                                } else "已选择音频"
+                            } ?: "已选择音频"
+                        } catch (e: Exception) {
+                            "已选择音频"
+                        }
+                    } ?: "未选择（使用默认警报声）"
+
+                    OutlinedCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("保存语音设置")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.AudioFile,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = audioFileName,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                audioPickerLauncher.launch(arrayOf("audio/*"))
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("选择音频文件")
+                        }
+                        
+                        if (settings?.customAudioUri != null) {
+                            OutlinedButton(
+                                onClick = { onUpdateAudioUri(null) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("恢复默认")
+                            }
+                        }
                     }
                 }
             }
