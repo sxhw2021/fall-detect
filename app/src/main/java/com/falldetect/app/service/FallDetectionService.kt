@@ -6,11 +6,16 @@ import android.app.Service
 import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import com.falldetect.app.AlarmHelper
 import com.falldetect.app.FallDetectApp
 import com.falldetect.app.MainActivity
 import com.falldetect.app.R
@@ -36,7 +41,8 @@ class FallDetectionService : Service() {
 
     private var monitoringJob: Job? = null
     private var lastAlarmTime = 0L
-    private val alarmCooldown = 10000L
+    private val alarmCooldown = 5000L
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -110,11 +116,18 @@ class FallDetectionService : Service() {
 
         isAlarmActive = true
         lastAlarmTime = currentTime
-        triggerAlarm()
+        
         triggerVibration()
+        triggerSound()
+        triggerAlarmNotification()
+        
+        AlarmHelper.scheduleAlarm(applicationContext)
+        
+        delay(3000)
+        stopSound()
     }
 
-    private fun triggerAlarm() {
+    private fun triggerAlarmNotification() {
         val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -137,12 +150,11 @@ class FallDetectionService : Service() {
             .setFullScreenIntent(fullScreenPendingIntent, true)
             .setAutoCancel(true)
             .setContentIntent(fullScreenPendingIntent)
+            .setOngoing(true)
             .build()
 
         val notificationManager = getSystemService(android.app.NotificationManager::class.java)
         notificationManager.notify(FallDetectApp.ALARM_NOTIFICATION_ID, notification)
-        
-        startActivity(alarmIntent)
     }
 
     private fun triggerVibration() {
@@ -153,7 +165,47 @@ class FallDetectionService : Service() {
             @Suppress("DEPRECATION")
             getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
-        vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+        
+        val pattern = longArrayOf(0, 500, 200, 500, 200, 500, 200, 500)
+        vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
+    }
+
+    private fun triggerSound() {
+        try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVolume, 0)
+            
+            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setDataSource(applicationContext, alarmUri)
+                isLooping = true
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun stopSound() {
+        try {
+            mediaPlayer?.apply {
+                if (isPlaying) {
+                    stop()
+                }
+                release()
+            }
+            mediaPlayer = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun createNotification(): Notification {
@@ -176,12 +228,14 @@ class FallDetectionService : Service() {
     private fun stopMonitoring() {
         monitoringJob?.cancel()
         sensorManager.unregisterListener(sensorDataProcessor)
+        stopSound()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        stopSound()
         serviceScope.cancel()
     }
 }

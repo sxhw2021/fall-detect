@@ -40,5 +40,10 @@
             android:theme="@style/Theme.FallDetect"
             android:showOnLockScreen="true"
             android:turnScreenOn="true" />
+
+        <receiver
+            android:name=".AlarmHelper$AlarmReceiver"
+            android:exported="false"
+            android:enabled="true" />
     </application>
 </manifest>

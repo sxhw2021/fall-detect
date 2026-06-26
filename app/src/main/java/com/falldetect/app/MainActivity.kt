@@ -1,36 +1,93 @@
 package com.falldetect.app
 
+import android.Manifest
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.falldetect.app.service.FallDetectionService
-import com.falldetect.app.service.PermissionManager
 import com.falldetect.app.ui.screens.HomeScreen
 import com.falldetect.app.ui.screens.SettingsScreen
 import com.falldetect.app.ui.theme.FallDetectTheme
 import com.falldetect.app.ui.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            requestIgnoreBatteryOptimizations()
+        }
+    }
+    
+    private val overlayPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        requestIgnoreBatteryOptimizations()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        val permissionManager = PermissionManager(this)
-        if (!permissionManager.hasAllPermissions()) {
-            permissionManager.requestPermissions(this)
-        }
+        requestPermissions()
         
         setContent {
             FallDetectTheme {
                 MainNavigation()
             }
+        }
+    }
+    
+    private fun requestPermissions() {
+        val permissions = mutableListOf<String>()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        
+        permissions.add(Manifest.permission.VIBRATE)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!Settings.canDrawOverlays(this)) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                overlayPermissionLauncher.launch(intent)
+                return
+            }
+        }
+        
+        if (permissions.isNotEmpty()) {
+            permissionLauncher.launch(permissions.toTypedArray())
+        } else {
+            requestIgnoreBatteryOptimizations()
+        }
+    }
+    
+    private fun requestIgnoreBatteryOptimizations() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
         }
     }
 
