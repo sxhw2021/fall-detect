@@ -173,12 +173,6 @@ class FallDetectionService : Service() {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
-        
-        try {
-            startActivity(alarmIntent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
