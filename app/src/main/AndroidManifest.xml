@@ -40,7 +40,10 @@
             android:name=".ui.AlarmActivity"
             android:exported="false"
             android:theme="@style/Theme.FallDetect"
-            android:turnScreenOn="true" />
+            android:turnScreenOn="true"
+            android:showOnLockScreen="true"
+            android:taskAffinity=".alarm"
+            android:excludeFromRecents="true" />
 
         <receiver
             android:name=".AlarmReceiver"

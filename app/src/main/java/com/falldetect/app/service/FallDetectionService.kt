@@ -168,12 +168,15 @@ class FallDetectionService : Service() {
         val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
         }
+
+        try {
+            startActivity(alarmIntent)
+        } catch (_: Exception) {}
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            FallDetectApp.ALARM_NOTIFICATION_ID,
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -188,7 +191,7 @@ class FallDetectionService : Service() {
             .setAutoCancel(true)
             .setContentIntent(fullScreenPendingIntent)
             .setOngoing(true)
-            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .build()
 
         val notificationManager = getSystemService(NotificationManager::class.java)
