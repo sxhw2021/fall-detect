@@ -18,7 +18,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
-import com.falldetect.app.AlarmHelper
 import com.falldetect.app.FallDetectApp
 import com.falldetect.app.MainActivity
 import com.falldetect.app.R
@@ -161,8 +160,6 @@ class FallDetectionService : Service() {
         triggerSound()
         triggerAlarmNotification()
         
-        AlarmHelper.scheduleAlarm(applicationContext)
-        
         delay(3000)
         stopSound()
     }
@@ -191,6 +188,7 @@ class FallDetectionService : Service() {
             .setAutoCancel(true)
             .setContentIntent(fullScreenPendingIntent)
             .setOngoing(true)
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
             .build()
 
         val notificationManager = getSystemService(NotificationManager::class.java)

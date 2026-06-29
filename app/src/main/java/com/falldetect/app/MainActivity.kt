@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestFullScreenIntentPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val notificationManager = getSystemService(NotificationManager::class.java)
             if (!notificationManager.canUseFullScreenIntent()) {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
