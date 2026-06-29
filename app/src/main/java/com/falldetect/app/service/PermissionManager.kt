@@ -13,10 +13,18 @@ class PermissionManager(private val context: Context) {
     companion object {
         const val PERMISSION_REQUEST_CODE = 1001
 
-        val REQUIRED_PERMISSIONS = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val REQUIRED_PERMISSIONS = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             arrayOf(
                 Manifest.permission.FOREGROUND_SERVICE,
                 Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE,
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.VIBRATE,
+                Manifest.permission.WAKE_LOCK,
+                Manifest.permission.USE_FULL_SCREEN_INTENT
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.FOREGROUND_SERVICE,
                 Manifest.permission.POST_NOTIFICATIONS,
                 Manifest.permission.VIBRATE,
                 Manifest.permission.WAKE_LOCK,

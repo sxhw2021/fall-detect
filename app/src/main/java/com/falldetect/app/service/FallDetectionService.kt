@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorManager
@@ -12,6 +13,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -53,6 +55,7 @@ class FallDetectionService : Service() {
     private var lastAlarmTime = 0L
     private val alarmCooldown = 5000L
     private var mediaPlayer: MediaPlayer? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -66,10 +69,37 @@ class FallDetectionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            "ACTION_START_MONITORING" -> startMonitoring()
-            "ACTION_STOP_MONITORING" -> stopMonitoring()
+            "ACTION_START_MONITORING" -> {
+                startForeground(FallDetectApp.NOTIFICATION_ID, createNotification())
+                acquireWakeLock()
+                startMonitoring()
+            }
+            "ACTION_STOP_MONITORING" -> {
+                stopMonitoring()
+            }
         }
         return START_STICKY
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock == null) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "FallDetect::SensorWakeLock"
+            ).apply {
+                acquire()
+            }
+        }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
+        wakeLock = null
     }
 
     private fun startMonitoring() {
@@ -80,7 +110,7 @@ class FallDetectionService : Service() {
             sensorManager.registerListener(
                 sensorDataProcessor,
                 it,
-                SensorManager.SENSOR_DELAY_UI
+                SensorManager.SENSOR_DELAY_NORMAL
             )
         }
 
@@ -88,11 +118,10 @@ class FallDetectionService : Service() {
             sensorManager.registerListener(
                 sensorDataProcessor,
                 it,
-                SensorManager.SENSOR_DELAY_UI
+                SensorManager.SENSOR_DELAY_NORMAL
             )
         }
 
-        startForeground(FallDetectApp.NOTIFICATION_ID, createNotification())
         startFallDetection()
     }
 
@@ -270,6 +299,7 @@ class FallDetectionService : Service() {
         monitoringJob?.cancel()
         sensorManager.unregisterListener(sensorDataProcessor)
         stopSound()
+        releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -278,6 +308,7 @@ class FallDetectionService : Service() {
         super.onDestroy()
         stopSound()
         stopVibration()
+        releaseWakeLock()
         serviceScope.cancel()
         instance = null
     }
