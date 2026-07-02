@@ -51,6 +51,7 @@ class FallDetectionService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var monitoringJob: Job? = null
+    private var sensorRefreshJob: Job? = null
     private var lastAlarmTime = 0L
     private val alarmCooldown = 5000L
     private var mediaPlayer: MediaPlayer? = null
@@ -102,6 +103,12 @@ class FallDetectionService : Service() {
     }
 
     private fun startMonitoring() {
+        registerSensors()
+        startFallDetection()
+        startSensorKeepAlive()
+    }
+
+    private fun registerSensors() {
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
@@ -109,7 +116,7 @@ class FallDetectionService : Service() {
             sensorManager.registerListener(
                 sensorDataProcessor,
                 it,
-                SensorManager.SENSOR_DELAY_NORMAL
+                SensorManager.SENSOR_DELAY_GAME
             )
         }
 
@@ -117,11 +124,18 @@ class FallDetectionService : Service() {
             sensorManager.registerListener(
                 sensorDataProcessor,
                 it,
-                SensorManager.SENSOR_DELAY_NORMAL
+                SensorManager.SENSOR_DELAY_GAME
             )
         }
+    }
 
-        startFallDetection()
+    private fun startSensorKeepAlive() {
+        sensorRefreshJob = serviceScope.launch {
+            while (isActive) {
+                delay(30_000)
+                registerSensors()
+            }
+        }
     }
 
     private fun startFallDetection() {
@@ -292,6 +306,7 @@ class FallDetectionService : Service() {
 
     private fun stopMonitoring() {
         monitoringJob?.cancel()
+        sensorRefreshJob?.cancel()
         sensorManager.unregisterListener(sensorDataProcessor)
         stopSound()
         releaseWakeLock()

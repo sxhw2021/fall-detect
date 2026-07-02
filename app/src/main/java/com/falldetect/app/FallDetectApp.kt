@@ -23,7 +23,7 @@ class FallDetectApp : Application() {
             val serviceChannel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = getString(R.string.notification_channel_description)
             }
